@@ -38,18 +38,24 @@
         .header { color: #111; font-size: 2.2em; font-weight: 800; margin: 0 0 10px 0; }
         .subtitle { font-size: 1.1em; color: #555; margin: 0 0 25px 0; word-break: keep-all; }
         
+        /* 공통 버튼 디자인 */
         .btn-common {
-            display: block; width: 100%; padding: 18px; 
+            display: block; width: 100%; padding: 16px; 
             border-radius: 15px; cursor: pointer; 
             font-size: 1.1em; font-weight: 800; border: none;
-            box-sizing: border-box; transition: 0.2s; margin-bottom: 15px; text-align: center; color: white;
+            box-sizing: border-box; transition: 0.2s; margin-bottom: 12px; text-align: center; color: white;
         }
         
-        #installAppBtn { background: #28a745; display: none; }
+        /* 앱 설치 버튼 (기본 숨김 처리) */
+        #installAppBtn { background: #28a745; display: none; margin-bottom: 25px; }
         #installAppBtn:hover { background: #218838; }
 
-        .upload-btn { background: #4A90E2; margin-bottom: 0; }
-        .upload-btn:hover { background-color: #357ABD; }
+        /* 분리된 2개의 업로드 버튼 */
+        .camera-btn { background: #4A90E2; }
+        .camera-btn:hover { background-color: #357ABD; }
+        .gallery-btn { background: #576574; }
+        .gallery-btn:hover { background-color: #4b5763; }
+        
         input[type="file"] { display: none; }
         
         #loadingMessage { display: none; color: #4A90E2; font-weight: bold; font-size: 1.1em; margin-top: 25px; }
@@ -65,7 +71,7 @@
         .crop-btn { background: #ff4757; }
         .cancel-btn { background: #a4b0be; }
 
-        /* 답변 영역 디자인 (수식 띄어쓰기 개선 반영) */
+        /* 답변 영역 디자인 */
         #resultArea { font-family: 'Noto Serif KR', serif; font-size: 1.05em; line-height: 1.8; word-break: keep-all; width: 100%; text-align: left; }
         .box { background: #fdfaf2; padding: 25px; border-radius: 12px; border-left: 5px solid #ffc107; margin-top: 30px; color: #222; white-space: normal; }
         .highlight-blue { color: #0056b3; font-weight: bold; }
@@ -81,14 +87,23 @@
         <h2 class="header">열린AIT 💡</h2>
         <p class="subtitle">모르는 문제나 문장을<br>사진으로 찍어주세요!</p>
         
-        <!-- 앱 설치 버튼 -->
+        <!-- 📲 앱 설치 버튼 -->
         <button id="installAppBtn" class="btn-common">📲 내 폰에 앱으로 설치하기</button>
 
-        <!-- 사진 찍기 / 업로드 버튼 -->
-        <label class="upload-btn btn-common" id="uploadLabel">
-            📸 사진 찍기 / 업로드
-            <input type="file" id="imageInput" accept="image/*" capture="environment">
-        </label>
+        <!-- 📸 버튼 그룹 (카메라 / 갤러리 분리) -->
+        <div id="uploadButtonsGroup">
+            <!-- 1. 카메라 즉시 실행 버튼 (capture="environment" 속성 포함) -->
+            <label class="camera-btn btn-common">
+                📸 사진 촬영하기
+                <input type="file" id="cameraInput" accept="image/*" capture="environment">
+            </label>
+
+            <!-- 2. 갤러리에서 선택 버튼 -->
+            <label class="gallery-btn btn-common">
+                🖼️ 갤러리에서 고르기
+                <input type="file" id="galleryInput" accept="image/*">
+            </label>
+        </div>
 
         <!-- 자르기 도구 영역 -->
         <div id="cropperContainer">
@@ -107,20 +122,26 @@
 
     <script>
         // ⭐ 복사하신 진짜 키를 여기에 쏙 넣어주세요!
-        const API_KEY = 'AQ.Ab8RN6IUsLx140Z3JUo6-Cvs-jEkvOMbhbFV-DVW958KBYmI3g'; 
+        const API_KEY = 'AQ.Ab8RN6Jlx7TkrkHmnTkFTDje8wyINZg7Id99OR2Y6kVune5kgQ'; 
 
-        // === 앱 설치 버튼 로직 ===
+        // ==========================================
+        // 1. 앱 설치(PWA) 버튼 로직
+        // ==========================================
         const installAppBtn = document.getElementById('installAppBtn');
         let deferredPrompt;
+        
+        // 기기 판별 및 앱 모드 실행 여부 확인
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
+        // 안드로이드: 설치 조건 만족 시 팝업 준비 이벤트
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             if (!isStandalone) installAppBtn.style.display = 'block';
         });
 
+        // 아이폰: 사파리 브라우저이고 바탕화면 앱이 아니면 버튼 표시
         if (isIOS && !isStandalone) {
             installAppBtn.style.display = 'block';
         }
@@ -136,26 +157,32 @@
             }
         });
 
-        // === 이미지 자르기 및 AI 통신 로직 ===
+        // ==========================================
+        // 2. 이미지 처리 및 자르기(Cropper) 로직
+        // ==========================================
         let cropper = null;
-        const imageInput = document.getElementById('imageInput');
+        const cameraInput = document.getElementById('cameraInput');
+        const galleryInput = document.getElementById('galleryInput');
+        const uploadButtonsGroup = document.getElementById('uploadButtonsGroup');
+        
         const cropperContainer = document.getElementById('cropperContainer');
         const imageToCrop = document.getElementById('imageToCrop');
-        const uploadLabel = document.getElementById('uploadLabel');
         const cancelCropBtn = document.getElementById('cancelCropBtn');
         const doCropBtn = document.getElementById('doCropBtn');
         const resultArea = document.getElementById('resultArea');
         const loadingMessage = document.getElementById('loadingMessage');
 
-        // 사진이 선택(또는 촬영)되면 실행됨
-        imageInput.addEventListener('change', function(e) {
+        // 공통 이미지 처리 함수 (카메라든 갤러리든 이 함수를 거침)
+        function handleImageSelection(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(event) {
                 imageToCrop.src = event.target.result;
-                uploadLabel.style.display = 'none'; 
+                
+                // 버튼들 숨기고 자르기 화면 띄우기
+                uploadButtonsGroup.style.display = 'none'; 
                 installAppBtn.style.display = 'none'; 
                 resultArea.innerHTML = ''; 
                 cropperContainer.style.display = 'block'; 
@@ -166,18 +193,22 @@
                 });
             };
             reader.readAsDataURL(file);
-            e.target.value = ''; // 재촬영 가능하도록 초기화
-        });
+            e.target.value = ''; // 재사용을 위해 초기화
+        }
 
-        // 취소 버튼 누름
+        // 두 버튼 모두 이벤트 연결
+        cameraInput.addEventListener('change', handleImageSelection);
+        galleryInput.addEventListener('change', handleImageSelection);
+
+        // 자르기 취소
         cancelCropBtn.addEventListener('click', () => {
             cropperContainer.style.display = 'none';
-            uploadLabel.style.display = 'block';
+            uploadButtonsGroup.style.display = 'block';
             if (!isStandalone) installAppBtn.style.display = 'block';
             if (cropper) cropper.destroy();
         });
 
-        // 자르기 완료 후 AI에게 분석 요청
+        // 자르기 완료 후 AI 분석
         doCropBtn.addEventListener('click', async () => {
             if (!cropper) return;
             const canvas = cropper.getCroppedCanvas({ width: 800 }); 
@@ -188,7 +219,7 @@
             if (cropper) cropper.destroy();
 
             try {
-                // 수식 띄어쓰기 개선 프롬프트 적용
+                // 수식 띄어쓰기 개선 프롬프트
                 const prompt = `
                 너는 '군산열린학원'의 친절하고 똑똑한 수학/영어 선생님 '열린AIT'야.
                 학생이 올린 사진을 분석해서 아래 규칙에 따라 HTML 태그로만 답변해. 절대 \`\`\`html 같은 코드블록 기호를 쓰지 마.
@@ -199,8 +230,8 @@
 
                 [수학 문제인 경우]
                 1. 정답과 함께 단계별 풀이 과정을 친절하게 설명해.
-                2. ⭐중요⭐ 문장 안에 섞여 있는 기호나 짧은 수식은 반드시 \\( 와 \\) 기호로 감싸서 글자처럼 이어지게(인라인) 작성해. (예: 다항함수 \\(f(x)\\)의 최솟값은...)
-                3. 길고 복잡한 수식이나 결론만 $$ 기호로 감싸서 가운데 정렬되게 해. (예: $$x^2 - 5x + 6 = 0$$)
+                2. ⭐중요⭐ 문장 안에 섞여 있는 기호나 짧은 수식은 반드시 \\( 와 \\) 기호로 감싸서 글자처럼 이어지게(인라인) 작성해. 
+                3. 길고 복잡한 수식이나 결론만 $$ 기호로 감싸서 가운데 정렬되게 해. 
                 4. 핵심 원리나 정답은 <span class="highlight-red"> 또는 <span class="highlight-blue"> 로 감싸서 색상을 줘.
 
                 [영어 문제인 경우]
@@ -229,7 +260,7 @@
                 aiText = aiText.replace(/```html/g, '').replace(/```/g, '');
 
                 loadingMessage.style.display = 'none';
-                uploadLabel.style.display = 'block'; 
+                uploadButtonsGroup.style.display = 'block'; 
                 resultArea.innerHTML = aiText;
 
                 if (window.MathJax) MathJax.typesetPromise();
@@ -237,7 +268,7 @@
             } catch (error) {
                 console.error(error);
                 loadingMessage.style.display = 'none';
-                uploadLabel.style.display = 'block';
+                uploadButtonsGroup.style.display = 'block';
                 resultArea.innerHTML = `<p style="color:red; text-align:center;">오류: ${error.message}</p>`;
             }
         });
