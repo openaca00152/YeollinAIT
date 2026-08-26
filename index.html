@@ -24,109 +24,83 @@
     
     <style>
         body {
-            background-color: #f4f6f8;
-            margin: 0; padding: 20px;
-            min-height: 100vh; 
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center; 
-            box-sizing: border-box;
+            background-color: #f4f6f8; margin: 0; padding: 20px;
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; box-sizing: border-box;
         }
         .app-container {
             width: 100%; max-width: 400px;
-            background: white; padding: 40px 25px; 
-            border-radius: 25px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
-            font-family: 'Pretendard Variable', sans-serif;
-            text-align: center;
+            background: white; padding: 30px 25px; 
+            border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+            font-family: 'Pretendard Variable', sans-serif; text-align: center;
         }
-        .app-logo {
-            width: 80px; height: 80px; border-radius: 20px;
-            object-fit: cover; margin-bottom: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .header { color: #111; font-size: 2.2em; font-weight: 800; margin: 0 0 10px 0; }
-        .subtitle { font-size: 1.1em; color: #555; margin: 0 0 25px 0; word-break: keep-all; }
+        .app-logo { width: 70px; height: 70px; border-radius: 18px; margin-bottom: 10px; }
+        .header { color: #111; font-size: 2em; font-weight: 800; margin: 0 0 10px 0; }
+        .subtitle { font-size: 1.05em; color: #555; margin: 0 0 25px 0; word-break: keep-all; }
         
-        /* 버튼 공통 디자인 */
         .btn-common {
-            display: block; width: 100%; padding: 18px; 
-            border-radius: 15px; cursor: pointer; 
-            font-size: 1.1em; font-weight: 800;
-            box-sizing: border-box; transition: 0.2s; border: none;
-            margin-bottom: 15px;
+            display: block; width: 100%; padding: 16px; 
+            border-radius: 12px; cursor: pointer; 
+            font-size: 1.1em; font-weight: 800; border: none;
+            box-sizing: border-box; margin-bottom: 12px; color: white;
         }
         
-        /* 앱 설치 버튼 (기본은 숨김) */
-        #installAppBtn {
-            background: #28a745; color: white; display: none;
-        }
-        #installAppBtn:hover { background: #218838; }
+        #installAppBtn { background: #28a745; display: none; }
+        #openCameraBtn { background: #4A90E2; }
+        #openCameraBtn:active { background: #357ABD; }
 
-        /* 사진 업로드 버튼 */
-        .upload-btn {
-            background: #4A90E2; color: white; margin-bottom: 0;
+        /* ⭐ 내장 카메라(뷰파인더) 영역 ⭐ */
+        #cameraView { display: none; margin-top: 15px; }
+        #videoElement { 
+            width: 100%; border-radius: 12px; background: #000; 
+            transform: scaleX(1); /* 후면 카메라 거울반전 방지 */
         }
-        .upload-btn:hover { background-color: #357ABD; }
-        input[type="file"] { display: none; }
-        
+        .shutter-btn { background: #ff4757; margin-top: 10px; }
+        .close-camera-btn { background: #576574; }
+
+        /* ⭐ 자르기 영역 ⭐ */
+        #cropperContainer { display: none; margin-top: 20px; }
+        #imageToCrop { max-width: 100%; display: block; margin: 0 auto; }
+        .action-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .crop-btn { flex: 2; background: #ff4757; }
+        .retry-btn { flex: 1; background: #a4b0be; }
+
         #loadingMessage { display: none; color: #4A90E2; font-weight: bold; font-size: 1.1em; margin-top: 25px; }
         
-        /* 이미지 자르기 영역 디자인 */
-        #cropperContainer { display: none; margin-top: 20px; text-align: center; }
-        #imageToCrop { max-width: 100%; max-height: 400px; display: block; margin: 0 auto; }
-        .action-btns { display: flex; gap: 10px; margin-top: 15px; }
-        .crop-btn, .cancel-btn {
-            flex: 1; padding: 15px; border: none; border-radius: 12px;
-            font-size: 1.1em; font-weight: bold; cursor: pointer; color: white;
-        }
-        .crop-btn { background: #ff4757; }
-        .cancel-btn { background: #a4b0be; }
-
-        /* 답변 영역 디자인 (가독성 개선) */
-        #resultArea {
-            font-family: 'Noto Serif KR', serif; 
-            font-size: 1.05em; line-height: 1.8; 
-            word-break: keep-all; width: 100%; text-align: left;
-        }
-        .box { 
-            background: #fdfaf2; padding: 25px; border-radius: 12px; 
-            border-left: 5px solid #ffc107; margin-top: 30px; 
-            color: #222; white-space: normal; /* 엔터키 문제 해결을 위해 normal로 변경 */
-        }
+        #resultArea { font-family: 'Noto Serif KR', serif; font-size: 1.05em; line-height: 1.8; text-align: left; }
+        .box { background: #fdfaf2; padding: 25px; border-radius: 12px; border-left: 5px solid #ffc107; margin-top: 30px; white-space: normal; }
         .highlight-blue { color: #0056b3; font-weight: bold; }
         .highlight-red { color: #d32f2f; font-weight: bold; }
-        
-        .listen-btn {
-            background: #28a745; color: white; border: none; padding: 10px 18px;
-            border-radius: 8px; cursor: pointer; margin-top: 10px; display: block;
-            font-weight: bold; font-size: 0.95em;
-        }
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        <img src="icon.png" alt="열린AIT 로고" class="app-logo">
+        <img src="icon.png" alt="로고" class="app-logo">
         <h2 class="header">열린AIT 💡</h2>
-        <p class="subtitle">모르는 문제나 문장을<br>사진으로 찍어주세요!</p>
+        <p class="subtitle" id="mainSubtitle">화면 안에서 바로 문제를 조준하세요!</p>
         
-        <!-- 📱 스마트폰 앱 설치 버튼 (조건에 따라 보임) -->
         <button id="installAppBtn" class="btn-common">📲 내 폰에 앱으로 설치하기</button>
 
-        <!-- 📸 업로드 버튼 -->
-        <label class="upload-btn btn-common" id="uploadLabel">
-            📸 사진 찍기 / 업로드
-            <input type="file" id="imageInput" accept="image/*" capture="environment">
-        </label>
+        <!-- 메인 화면 버튼 -->
+        <button id="openCameraBtn" class="btn-common">📸 라이브 카메라 켜기</button>
 
-        <!-- 자르기 도구 영역 -->
+        <!-- ⭐ 1. 라이브 카메라 뷰파인더 영역 ⭐ -->
+        <div id="cameraView">
+            <video id="videoElement" autoplay playsinline></video>
+            <button id="shutterBtn" class="btn-common shutter-btn">🔴 찰칵! 촬영하기</button>
+            <button id="closeCameraBtn" class="btn-common close-camera-btn">취소</button>
+            <canvas id="canvasElement" style="display:none;"></canvas>
+        </div>
+
+        <!-- ⭐ 2. 촬영 후 자르기 영역 ⭐ -->
         <div id="cropperContainer">
-            <div style="max-height: 400px; overflow: hidden; border-radius: 10px; border: 2px solid #ddd;">
-                <img id="imageToCrop" src="" alt="자르기 이미지">
+            <div style="max-height: 350px; overflow: hidden; border-radius: 10px; border: 2px solid #ddd;">
+                <img id="imageToCrop" src="" alt="자르기">
             </div>
             <div class="action-btns">
-                <button class="cancel-btn" id="cancelCropBtn">취소</button>
-                <button class="crop-btn" id="doCropBtn">✂️ 이 부분만 분석</button>
+                <button class="btn-common retry-btn" id="retryCropBtn">다시 찍기</button>
+                <button class="btn-common crop-btn" id="doCropBtn">✂️ 이 부분만 분석</button>
             </div>
         </div>
 
@@ -135,90 +109,120 @@
     </div>
 
     <script>
-        // ⭐ 여기에 발급받으신 제미나이 API 키를 넣어주세요!
-        const API_KEY = '여기에_키를_붙여넣으세요'; 
+        // ⭐ 여기에 API 키 넣기!
+        const API_KEY = 'AQ.Ab8RN6IUsLx140Z3JUo6-Cvs-jEkvOMbhbFV-DVW958KBYmI3g'; 
 
-        // ==========================================
-        // 1. 앱 설치(PWA) 버튼 로직
-        // ==========================================
+        // === 앱 설치 버튼 로직 ===
         const installAppBtn = document.getElementById('installAppBtn');
         let deferredPrompt;
-
-        // 기기 판별 (아이폰/아이패드인지 확인)
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        // 이미 앱으로 실행 중인지 확인
         const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
-        // 안드로이드: 설치 팝업 준비 완료 시 이벤트
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
+            e.preventDefault(); deferredPrompt = e;
             if (!isStandalone) installAppBtn.style.display = 'block';
         });
+        if (isIOS && !isStandalone) installAppBtn.style.display = 'block';
 
-        // 아이폰: 사파리로 접속했고, 앱이 아니라면 무조건 버튼 보이기
-        if (isIOS && !isStandalone) {
-            installAppBtn.style.display = 'block';
-        }
-
-        // 설치 버튼 클릭 시 동작
         installAppBtn.addEventListener('click', async () => {
             if (deferredPrompt) {
-                // 안드로이드 설치 진행
                 deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    installAppBtn.style.display = 'none';
-                }
+                await deferredPrompt.userChoice;
+                installAppBtn.style.display = 'none';
                 deferredPrompt = null;
             } else if (isIOS) {
-                // 아이폰은 자동 설치가 막혀있으므로 안내창 띄우기
-                alert("🍎 아이폰 앱 설치 방법 🍎\n\n1. 화면 맨 아래의 [공유(네모 위로 화살표)] 버튼을 누르세요.\n2. 메뉴를 조금 내려서 [홈 화면에 추가]를 선택해 주세요!");
+                alert("🍎 아이폰 앱 설치 방법 🍎\n\n1. 화면 맨 아래의 [공유] 버튼을 누르세요.\n2. 메뉴에서 [홈 화면에 추가]를 선택하세요!");
             }
         });
 
-
-        // ==========================================
-        // 2. 이미지 자르기 및 AI 통신 로직
-        // ==========================================
+        // === 내장 카메라 & 자르기 로직 ===
+        let stream = null;
         let cropper = null;
-        const imageInput = document.getElementById('imageInput');
+
+        const openCameraBtn = document.getElementById('openCameraBtn');
+        const cameraView = document.getElementById('cameraView');
+        const videoElement = document.getElementById('videoElement');
+        const canvasElement = document.getElementById('canvasElement');
+        const shutterBtn = document.getElementById('shutterBtn');
+        const closeCameraBtn = document.getElementById('closeCameraBtn');
+        
         const cropperContainer = document.getElementById('cropperContainer');
         const imageToCrop = document.getElementById('imageToCrop');
-        const uploadLabel = document.getElementById('uploadLabel');
-        const cancelCropBtn = document.getElementById('cancelCropBtn');
+        const retryCropBtn = document.getElementById('retryCropBtn');
         const doCropBtn = document.getElementById('doCropBtn');
+        
         const resultArea = document.getElementById('resultArea');
         const loadingMessage = document.getElementById('loadingMessage');
+        const mainSubtitle = document.getElementById('mainSubtitle');
 
-        imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                imageToCrop.src = event.target.result;
-                uploadLabel.style.display = 'none'; 
-                installAppBtn.style.display = 'none'; // 분석 중에는 설치버튼 숨김
-                resultArea.innerHTML = ''; 
-                cropperContainer.style.display = 'block'; 
-                
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(imageToCrop, {
-                    viewMode: 1, autoCropArea: 0.8, background: false,
+        // 1. 카메라 켜기
+        openCameraBtn.addEventListener('click', async () => {
+            try {
+                // 스마트폰 후면 카메라 호출
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
                 });
-            };
-            reader.readAsDataURL(file);
-            e.target.value = ''; 
+                videoElement.srcObject = stream;
+                
+                openCameraBtn.style.display = 'none';
+                installAppBtn.style.display = 'none';
+                resultArea.innerHTML = '';
+                cameraView.style.display = 'block';
+                mainSubtitle.innerText = "선에 맞춰 문제를 조준하세요.";
+            } catch (err) {
+                alert("카메라 접근 권한이 필요합니다. 브라우저 설정에서 카메라를 허용해주세요.");
+            }
         });
 
-        cancelCropBtn.addEventListener('click', () => {
-            cropperContainer.style.display = 'none';
-            uploadLabel.style.display = 'block';
+        // 2. 카메라 끄기 (취소)
+        const stopCamera = () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        };
+
+        closeCameraBtn.addEventListener('click', () => {
+            stopCamera();
+            cameraView.style.display = 'none';
+            openCameraBtn.style.display = 'block';
             if (!isStandalone) installAppBtn.style.display = 'block';
-            if (cropper) cropper.destroy();
+            mainSubtitle.innerText = "모르는 문제나 문장을 사진으로 찍어주세요!";
         });
 
+        // 3. 사진 찰칵! 촬영하기
+        shutterBtn.addEventListener('click', () => {
+            // 비디오 화면을 캔버스로 복사해서 이미지로 만듦
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            const context = canvasElement.getContext('2d');
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            
+            const imageDataUrl = canvasElement.toDataURL('image/jpeg', 0.9);
+            
+            // 카메라 스트림 끄기
+            stopCamera();
+            cameraView.style.display = 'none';
+
+            // 자르기 화면 띄우기
+            imageToCrop.src = imageDataUrl;
+            cropperContainer.style.display = 'block';
+            mainSubtitle.innerText = "분석할 문제 영역만 잘라주세요.";
+            
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(imageToCrop, {
+                viewMode: 1, autoCropArea: 0.8, background: false,
+            });
+        });
+
+        // 4. 다시 찍기
+        retryCropBtn.addEventListener('click', () => {
+            if (cropper) cropper.destroy();
+            cropperContainer.style.display = 'none';
+            openCameraBtn.click(); // 카메라 다시 켜기 버튼 강제 클릭
+        });
+
+        // 5. 자르기 완료 후 AI 전송
         doCropBtn.addEventListener('click', async () => {
             if (!cropper) return;
             const canvas = cropper.getCroppedCanvas({ width: 800 }); 
@@ -226,10 +230,10 @@
 
             cropperContainer.style.display = 'none';
             loadingMessage.style.display = 'block';
+            mainSubtitle.innerText = "AI가 문제를 열심히 풀고 있습니다!";
             if (cropper) cropper.destroy();
 
             try {
-                // ⭐ 프롬프트 대폭 개선: 인라인 수식(\)과 블록 수식($$)의 구분 지시
                 const prompt = `
                 너는 '군산열린학원'의 친절하고 똑똑한 수학/영어 선생님 '열린AIT'야.
                 학생이 올린 사진을 분석해서 아래 규칙에 따라 HTML 태그로만 답변해. 절대 \`\`\`html 같은 코드블록 기호를 쓰지 마.
@@ -240,14 +244,14 @@
 
                 [수학 문제인 경우]
                 1. 정답과 함께 단계별 풀이 과정을 친절하게 설명해.
-                2. ⭐중요⭐ 문장 안에 섞여 있는 기호나 짧은 수식은 반드시 \\( 와 \\) 기호로 감싸서 글자처럼 이어지게(인라인) 작성해. (예: 다항함수 \\(f(x)\\)의 최솟값은...)
-                3. 길고 복잡한 수식이나 결론만 $$ 기호로 감싸서 가운데 정렬되게 해. (예: $$x^2 - 5x + 6 = 0$$)
+                2. ⭐중요⭐ 문장 안에 섞여 있는 기호나 짧은 수식은 반드시 \\( 와 \\) 기호로 감싸서 글자처럼 이어지게(인라인) 작성해.
+                3. 길고 복잡한 수식이나 결론만 $$ 기호로 감싸서 가운데 정렬되게 해.
                 4. 핵심 원리나 정답은 <span class="highlight-red"> 또는 <span class="highlight-blue"> 로 감싸서 색상을 줘.
 
                 [영어 문제인 경우]
                 1. 사진 속 영어 문장을 파악해서 가장 상단에 <p id="eng-text" style="font-size:1.1em; font-weight:bold;">[영어 원문]</p> 형식으로 적어.
                 2. 원문 바로 밑에 다음 코드를 넣어: <button class="listen-btn" onclick="speakEnglish(document.getElementById('eng-text').innerText)">🔊 미국식 발음 듣기</button>
-                3. 한글 해석을 제공하고, 핵심 영문법이나 단어를 번호 매겨 설명해. 중요 부분은 span 태그로 강조해.
+                3. 한글 해석을 제공하고, 핵심 영문법이나 단어를 번호 매겨 설명해.
                 `;
 
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${API_KEY}`, {
@@ -270,7 +274,8 @@
                 aiText = aiText.replace(/```html/g, '').replace(/```/g, '');
 
                 loadingMessage.style.display = 'none';
-                uploadLabel.style.display = 'block'; 
+                openCameraBtn.style.display = 'block'; 
+                mainSubtitle.innerText = "결과가 나왔습니다! 다른 문제도 찍어보세요.";
                 resultArea.innerHTML = aiText;
 
                 if (window.MathJax) MathJax.typesetPromise();
@@ -278,7 +283,8 @@
             } catch (error) {
                 console.error(error);
                 loadingMessage.style.display = 'none';
-                uploadLabel.style.display = 'block';
+                openCameraBtn.style.display = 'block';
+                mainSubtitle.innerText = "오류가 발생했습니다. 다시 시도해주세요.";
                 resultArea.innerHTML = `<p style="color:red; text-align:center;">오류: ${error.message}</p>`;
             }
         });
@@ -290,15 +296,6 @@
             utterance.lang = 'en-US'; utterance.rate = 0.85; 
             window.speechSynthesis.speak(utterance);
         };
-    </script>
-
-    <!-- 서비스 워커(sw.js) 연결 -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log('서비스 워커 실패:', err));
-            });
-        }
     </script>
 </body>
 </html>
