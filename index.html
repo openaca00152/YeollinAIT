@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>열린AIT - 군산열린학원 AI 튜터</title>
+    
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- ⭐ 아이폰(iOS) 전용 앱 설치 및 UI 세팅 ⭐ -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="열린AIT">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <!-- 앱 첫 화면용 트렌디한 폰트 (Pretendard) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+    
+    <!-- 문제풀이용 교과서 명조체 (Noto Serif KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax (수학 수식 렌더링) -->
+    <script id="MathJax-script" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+    
+    <style>
+        /* 화면 전체 중앙 정렬 및 배경 */
+        body {
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            box-sizing: border-box;
+        }
+
+        /* 앱 메인 화면 컨테이너 */
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            padding: 40px 25px; 
+            border-radius: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+            font-family: 'Pretendard Variable', Pretendard, sans-serif;
+        }
+
+        /* 앱 제목 및 부제목 */
+        .header { 
+            text-align: center; 
+            color: #111; 
+            font-size: 2.2em; 
+            font-weight: 800;
+            margin-bottom: 10px; 
+            margin-top: 0;
+        }
+        .subtitle {
+            text-align: center; 
+            font-size: 1.1em; 
+            color: #555; 
+            margin-top: 0;
+            margin-bottom: 30px;
+            word-break: keep-all;
+        }
+
+        /* 사진 업로드 버튼 디자인 */
+        .upload-btn {
+            display: block; 
+            width: 100%; 
+            padding: 18px; 
+            background: #4A90E2; 
+            color: white; 
+            text-align: center; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-size: 1.2em; 
+            font-weight: 800;
+            box-sizing: border-box;
+            transition: background-color 0.2s ease;
+        }
+        .upload-btn:hover { background-color: #357ABD; }
+        input[type="file"] { display: none; }
+        
+        /* 로딩 메시지 디자인 */
+        #loadingMessage {
+            display: none; 
+            text-align: center; 
+            margin-top: 25px;
+            color: #4A90E2;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        /* ========================================= */
+        /* 제미나이 답변 영역 (가독성 초집중 세팅) */
+        /* ========================================= */
+        #resultArea {
+            font-family: 'Noto Serif KR', serif; 
+            font-size: 1.05em;
+            line-height: 1.9; 
+            word-break: keep-all; 
+            width: 100%; 
+        }
+        
+        .box { 
+            background: #fdfaf2; 
+            padding: 25px; 
+            border-radius: 12px; 
+            border-left: 5px solid #ffc107; 
+            margin-top: 30px; 
+            color: #222;
+            white-space: pre-wrap; 
+        }
+
+        /* 중요 내용 색상 강조 */
+        .highlight-blue { color: #0056b3; font-weight: bold; }
+        .highlight-red { color: #d32f2f; font-weight: bold; }
+        
+        /* 영어 발음 듣기 버튼 디자인 */
+        .listen-btn {
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 10px 18px;
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-family: 'Pretendard Variable', sans-serif; 
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .listen-btn:active { background: #218838; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <h2 class="header">열린AIT 💡</h2>
+        <p class="subtitle">
+            모르는 문제나 문장을<br>사진으로 찍어주세요!
+        </p>
+        
+        <!-- 카메라/갤러리 사진 업로드 버튼 -->
+        <label class="upload-btn">
+            📸 사진 찍기 / 업로드
+            <input type="file" id="imageInput" accept="image/*">
+        </label>
+
+        <!-- 로딩 표시 영역 -->
+        <div id="loadingMessage">AI 선생님이 분석 중입니다... ⏳</div>
+        
+        <!-- 제미나이 결과가 출력될 영역 -->
+        <div id="resultArea"></div>
+    </div>
+
+    <!-- 앱 구동 자바스크립트 연결 -->
+    <script src="app.js"></script>
+
+    <!-- ⭐ 서비스 워커(sw.js) 실행 코드 ⭐ -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('서비스 워커 등록 성공! (앱 설치 준비 완료)'))
+                .catch(err => console.log('서비스 워커 등록 실패:', err));
+            });
+        }
+    </script>
+</body>
+</html>

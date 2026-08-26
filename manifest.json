@@ -1,0 +1,16 @@
+{
+  "name": "열린AIT - 군산열린학원",
+  "short_name": "열린AIT",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#4A90E2",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
