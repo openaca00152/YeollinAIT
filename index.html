@@ -92,7 +92,7 @@
 
         <!-- 📸 버튼 그룹 (카메라 / 갤러리 분리) -->
         <div id="uploadButtonsGroup">
-            <!-- 1. 카메라 즉시 실행 버튼 (capture="environment" 속성 포함) -->
+            <!-- 1. 카메라 즉시 실행 버튼 -->
             <label class="camera-btn btn-common">
                 📸 사진 촬영하기
                 <input type="file" id="cameraInput" accept="image/*" capture="environment">
@@ -121,7 +121,7 @@
     </div>
 
     <script>
-        // ⭐ 복사하신 진짜 키를 여기에 쏙 넣어주세요!
+        // ⭐ 아래에 새로 발급받으신 무료 API 키를 넣어주세요!
         const API_KEY = 'AQ.Ab8RN6JhwNkkU56cPEZvJB7aDOwdy6fb_ZaiEstcD8goz67oVw'; 
 
         // ==========================================
@@ -130,18 +130,15 @@
         const installAppBtn = document.getElementById('installAppBtn');
         let deferredPrompt;
         
-        // 기기 판별 및 앱 모드 실행 여부 확인
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
-        // 안드로이드: 설치 조건 만족 시 팝업 준비 이벤트
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             if (!isStandalone) installAppBtn.style.display = 'block';
         });
 
-        // 아이폰: 사파리 브라우저이고 바탕화면 앱이 아니면 버튼 표시
         if (isIOS && !isStandalone) {
             installAppBtn.style.display = 'block';
         }
@@ -172,7 +169,6 @@
         const resultArea = document.getElementById('resultArea');
         const loadingMessage = document.getElementById('loadingMessage');
 
-        // 공통 이미지 처리 함수 (카메라든 갤러리든 이 함수를 거침)
         function handleImageSelection(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -181,7 +177,6 @@
             reader.onload = function(event) {
                 imageToCrop.src = event.target.result;
                 
-                // 버튼들 숨기고 자르기 화면 띄우기
                 uploadButtonsGroup.style.display = 'none'; 
                 installAppBtn.style.display = 'none'; 
                 resultArea.innerHTML = ''; 
@@ -193,14 +188,12 @@
                 });
             };
             reader.readAsDataURL(file);
-            e.target.value = ''; // 재사용을 위해 초기화
+            e.target.value = ''; 
         }
 
-        // 두 버튼 모두 이벤트 연결
         cameraInput.addEventListener('change', handleImageSelection);
         galleryInput.addEventListener('change', handleImageSelection);
 
-        // 자르기 취소
         cancelCropBtn.addEventListener('click', () => {
             cropperContainer.style.display = 'none';
             uploadButtonsGroup.style.display = 'block';
@@ -208,7 +201,6 @@
             if (cropper) cropper.destroy();
         });
 
-        // 자르기 완료 후 AI 분석
         doCropBtn.addEventListener('click', async () => {
             if (!cropper) return;
             const canvas = cropper.getCroppedCanvas({ width: 800 }); 
@@ -219,7 +211,6 @@
             if (cropper) cropper.destroy();
 
             try {
-                // 수식 띄어쓰기 개선 프롬프트
                 const prompt = `
                 너는 '군산열린학원'의 친절하고 똑똑한 수학/영어 선생님 '열린AIT'야.
                 학생이 올린 사진을 분석해서 아래 규칙에 따라 HTML 태그로만 답변해. 절대 \`\`\`html 같은 코드블록 기호를 쓰지 마.
@@ -240,7 +231,8 @@
                 3. 한글 해석을 제공하고, 핵심 영문법이나 단어를 번호 매겨 설명해. 중요 부분은 span 태그로 강조해.
                 `;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${API_KEY}`, {
+                // ⭐ 통신 주소가 gemini-1.5-flash 모델로 변경되었습니다! ⭐
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
