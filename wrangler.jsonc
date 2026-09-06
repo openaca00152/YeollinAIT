@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yeollin-ait",
+  "main": "backend/worker.js",
+  "compatibility_date": "2026-09-01",
+  "vars": { "GEMINI_MODEL": "gemini-2.5-flash", "ALLOWED_ORIGINS": "https://openaca00152.github.io" }
+}

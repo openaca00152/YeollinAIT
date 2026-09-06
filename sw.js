@@ -1,13 +1,20 @@
-// 안드로이드 PWA 설치 요건을 충족하기 위한 기본 서비스 워커
-self.addEventListener('install', (e) => {
-    console.log('[Service Worker] 설치 완료');
-    self.skipWaiting();
-});
+const CACHE_NAME = 'yeollin-ait-v2';
+const APP_SHELL = ['./', './index.html', './config.js', './app.js', './styles.css', './manifest.json', './icon.png'];
 
-self.addEventListener('activate', (e) => {
-    console.log('[Service Worker] 활성화 완료');
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
 });
-
-self.addEventListener('fetch', (e) => {
-    // 앱이 켜져 있을 때 인터넷 통신을 방해하지 않고 그대로 통과시킴
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.keys().then((keys) => Promise.all(
+    keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
+  )).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
+  event.respondWith(fetch(event.request).then((response) => {
+    const copy = response.clone();
+    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+    return response;
+  }).catch(() => caches.match(event.request)));
 });
