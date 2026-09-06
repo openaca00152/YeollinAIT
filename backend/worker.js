@@ -46,7 +46,7 @@ async function analyze(request, env, origin) {
   if (!body || typeof body.image !== 'string' || !MIME_TYPES.has(body.mimeType)) return json({ error: '지원하지 않는 사진 형식입니다.' }, 400, origin);
   if (body.image.length < 100 || body.image.length > MAX_BODY_BYTES || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.image)) return json({ error: '사진 데이터가 올바르지 않습니다.' }, 400, origin);
 
-  const model = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const model = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
