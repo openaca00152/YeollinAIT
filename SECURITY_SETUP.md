@@ -14,7 +14,7 @@
 ## 일반 설정
 
 - `ALLOWED_ORIGINS`: 실제 앱 주소. 여러 주소는 쉼표로 구분합니다.
-- `GEMINI_MODEL`: 기본값 `gemini-2.5-flash`
+- `GEMINI_MODEL`: 기본값 `gemini-3.5-flash-lite`
 
 ## 배포 전 확인
 
