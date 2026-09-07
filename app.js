@@ -145,7 +145,8 @@ async function trackUsage(eventType) {
 function render(answer) {
   el.result.replaceChildren();
   const box = node('article', '', 'answer-box');
-  box.append(node('p', answer.subject === 'english' ? '영어 문제' : '수학 문제', 'answer-label'), node('h2', answer.title || '풀이 결과'));
+  const subjectNames = { math: '수학', english: '영어', korean: '국어', social: '사회', history: '역사', science: '과학' };
+  box.append(node('p', `${subjectNames[answer.subject] || '교과'} 문제`, 'answer-label'), node('h2', answer.title || '풀이 결과'));
   const hintBox = node('section', '', 'hint-box');
   hintBox.append(node('strong', '먼저 생각해 볼 힌트'), node('p', answer.hint || answer.checkTip || '문제에서 주어진 조건을 다시 확인해 보세요.'));
   const reveal = node('button', '전체 풀이와 정답 보기', 'button reveal-button'); reveal.type = 'button';
@@ -220,6 +221,18 @@ const learningGuides = {
     common: ['호흡 30초 · 코로 천천히 들이마시고 더 길게 내쉬기를 3회 반복하세요.', '목·어깨 60초 · 어깨를 뒤로 돌리고 목을 좌우로 천천히 기울이세요. 통증이 있으면 멈추세요.', '손목·허리 30초 · 손목을 가볍게 돌리고 자리에서 일어나 등을 펴세요.', '눈 휴식 30초 · 화면에서 눈을 떼고 먼 곳을 바라보세요.', '마음 정리 30초 · 잡생각을 없애려 하지 말고 호흡에만 잠깐 집중하세요.', '다시 시작 30초 · 물을 마시고 다음 25분 동안 할 일 한 가지만 정하세요.'],
   },
 };
+const learningIntros = {
+  study: '과목마다 공부하는 방법이 다릅니다. 선택한 학교급에 맞는 방법을 하나씩 실천해 보세요.',
+  exam: '시험 범위를 한꺼번에 외우지 말고, 남은 기간에 맞춰 학습 단계를 바꾸는 것이 중요합니다.',
+  summary: '요점정리는 예쁘게 베끼는 작업이 아니라, 중요한 내용을 골라 다시 떠올리는 공부입니다.',
+  rest: '짧은 휴식은 공부를 멈추는 시간이 아니라 집중력을 회복하는 과정입니다.',
+};
+const learningActions = {
+  study: '오늘 배운 내용 중 하나를 책을 덮고 1분 동안 설명해 보세요.',
+  exam: '지금 시험까지 남은 기간을 확인하고 오늘 할 일 세 가지만 적어보세요.',
+  summary: '공책 한 장을 꺼내 핵심 질문 세 개부터 적어보세요.',
+  rest: '어깨 힘을 빼고 세 번 천천히 내쉰 뒤 다음 공부 한 가지만 정하세요.',
+};
 function gradeBand() {
   if (el.grade.value.startsWith('초등')) return 'elementary';
   if (el.grade.value.startsWith('고등')) return 'high';
@@ -228,10 +241,18 @@ function gradeBand() {
 function renderLearning(topic) {
   const guide = learningGuides[topic];
   const items = guide[gradeBand()] || guide.common;
-  el.learning.replaceChildren(node('h3', guide.title));
-  const list = node('ol', '', 'guide-list');
-  items.forEach((item) => list.append(node('li', item)));
-  el.learning.append(list);
+  el.learning.replaceChildren(node('h3', guide.title), node('p', learningIntros[topic], 'guide-intro'));
+  const grid = node('div', '', 'guide-grid');
+  items.forEach((item, index) => {
+    const card = node('article', '', 'guide-card');
+    const parts = item.split(' · ');
+    if (parts.length > 1) card.append(node('h4', parts.shift()), node('p', parts.join(' · ')));
+    else card.append(node('strong', `${index + 1}단계`), node('p', item.replace(/^[①②③④⑤⑥]\s*/, '')));
+    grid.append(card);
+  });
+  const action = node('aside', '', 'practice-now');
+  action.append(node('strong', '바로 실천하기'), node('p', learningActions[topic]));
+  el.learning.append(grid, action);
   el.calmPlayer.hidden = topic !== 'rest';
 }
 el.learningTabs.forEach((tab) => tab.addEventListener('click', () => {
@@ -258,11 +279,12 @@ function stopCalm(completed = false) {
   el.breathingCircle.className = '';
   el.breathingGuide.textContent = completed ? '잘했습니다. 천천히 눈을 뜨고 첫 문제를 차분히 읽어보세요.' : '재생을 멈췄습니다.';
 }
-function startCalm(totalSeconds) {
+async function startCalm(totalSeconds) {
   stopCalm();
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return alert('현재 기기에서는 마음 안정 소리를 재생할 수 없습니다.');
   const context = new AudioContext();
+  try { await context.resume(); } catch (_) { return alert('휴대폰의 미디어 음량을 확인한 뒤 다시 눌러주세요.'); }
   const master = context.createGain();
   const oscillators = [174, 261.63].map((frequency, index) => {
     const oscillator = context.createOscillator(); const gain = context.createGain();
@@ -270,8 +292,12 @@ function startCalm(totalSeconds) {
     oscillator.connect(gain).connect(master); oscillator.start(); return oscillator;
   });
   master.connect(context.destination); master.gain.value = 0;
-  const targetVolume = Number(el.calmVolume.value) / 100 * 0.09;
-  master.gain.linearRampToValueAtTime(targetVolume, context.currentTime + 1.5);
+  const targetVolume = Number(el.calmVolume.value) / 100 * 0.18;
+  master.gain.linearRampToValueAtTime(targetVolume, context.currentTime + 0.8);
+  const chime = context.createOscillator(); const chimeGain = context.createGain();
+  chime.type = 'sine'; chime.frequency.value = 523.25; chimeGain.gain.setValueAtTime(0.12, context.currentTime);
+  chimeGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 1.2);
+  chime.connect(chimeGain).connect(context.destination); chime.start(); chime.stop(context.currentTime + 1.25);
   const startedAt = Date.now();
   const update = () => {
     const elapsed = Math.floor((Date.now() - startedAt) / 1000);
@@ -289,7 +315,7 @@ el.calmStarts.forEach((button) => button.addEventListener('click', () => startCa
 el.stopCalm.addEventListener('click', () => stopCalm());
 el.calmVolume.addEventListener('input', () => {
   if (!calmSession) return;
-  calmSession.master.gain.setTargetAtTime(Number(el.calmVolume.value) / 100 * 0.09, calmSession.context.currentTime, 0.08);
+  calmSession.master.gain.setTargetAtTime(Number(el.calmVolume.value) / 100 * 0.18, calmSession.context.currentTime, 0.08);
 });
 window.addEventListener('pagehide', () => stopCalm());
 
