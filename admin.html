@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+  <title>열린AIT 관리자 통계</title><link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell admin-shell">
+    <header class="brand"><img src="./icon.png" alt="" class="app-logo" width="64" height="64"><div><p class="academy-name">군산열린학원</p><h1>이용 통계</h1></div></header>
+    <section class="access-panel">
+      <label for="adminCode" class="field-label">관리자 코드</label>
+      <input id="adminCode" type="password" autocomplete="off" placeholder="관리자 코드 입력">
+      <button id="loadStats" class="button primary-button admin-load" type="button">통계 확인하기</button>
+    </section>
+    <p id="statsStatus" role="status" aria-live="polite"></p>
+    <section id="statsResult" hidden>
+      <div class="stat-cards"><article><strong id="todayVisitors">0</strong><span>오늘 방문 학생</span></article><article><strong id="todayStudies">0</strong><span>오늘 문제풀이</span></article></div>
+      <h2>오늘 학년별 방문 학생</h2><div id="gradeStats" class="grade-stats"></div>
+      <h2>최근 14일 이용 추이</h2><div id="dailyStats" class="daily-stats"></div>
+      <p class="code-help">이 통계는 이름이나 문제 사진을 저장하지 않고 익명 기기 기준으로 집계합니다.</p>
+    </section>
+  </main>
+  <script src="./config.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function row(label, value, max) {
+      const item = document.createElement('div'); item.className = 'stat-row';
+      const name = document.createElement('span'); name.textContent = label;
+      const bar = document.createElement('i'); bar.style.width = `${Math.max(3, value / Math.max(1, max) * 100)}%`;
+      const count = document.createElement('strong'); count.textContent = String(value);
+      item.append(name, bar, count); return item;
+    }
+    $('loadStats').addEventListener('click', async () => {
+      $('statsStatus').textContent = '통계를 불러오는 중입니다.'; $('statsResult').hidden = true;
+      try {
+        const base = String(window.YEOLLIN_API_URL || '').replace(/\/analyze$/, '');
+        const response = await fetch(`${base}/stats`, { headers: { 'X-Admin-Code': $('adminCode').value.trim() } });
+        const data = await response.json(); if (!response.ok) throw new Error(data.error || '통계를 불러오지 못했습니다.');
+        $('todayVisitors').textContent = data.today.visitors; $('todayStudies').textContent = data.today.studies;
+        $('gradeStats').replaceChildren(); const gradeMax = Math.max(1, ...data.byGrade.map((x) => x.visitors));
+        data.byGrade.forEach((x) => $('gradeStats').append(row(x.grade, x.visitors, gradeMax)));
+        $('dailyStats').replaceChildren(); const dayMax = Math.max(1, ...data.daily.map((x) => x.visitors));
+        data.daily.forEach((x) => $('dailyStats').append(row(x.day.slice(5), x.visitors, dayMax)));
+        $('statsStatus').textContent = `마지막 확인: ${new Date().toLocaleString('ko-KR')}`; $('statsResult').hidden = false;
+      } catch (error) { $('statsStatus').textContent = error.message; }
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'yeollin-ait-v3';
-const APP_SHELL = ['./', './index.html', './config.js', './app.js', './styles.css', './manifest.json', './icon.png'];
+const CACHE_NAME = 'yeollin-ait-v4';
+const APP_SHELL = ['./', './index.html', './admin.html', './config.js', './app.js', './styles.css', './manifest.json', './icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
