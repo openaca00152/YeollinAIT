@@ -2,13 +2,53 @@ const byId = (id) => document.getElementById(id);
 const el = {
   install: byId('installAppBtn'), upload: byId('uploadButtonsGroup'), camera: byId('cameraInput'), gallery: byId('galleryInput'),
   cropPanel: byId('cropperContainer'), image: byId('imageToCrop'), crop: byId('doCropBtn'), cancel: byId('cancelCropBtn'),
-  loading: byId('loadingMessage'), result: byId('resultArea'), code: byId('accessCode'), consent: byId('privacyConsent'), next: byId('newQuestionBtn'),
+  loading: byId('loadingMessage'), result: byId('resultArea'), code: byId('accessCode'), rememberCode: byId('rememberAccessCode'),
+  clearCode: byId('clearAccessCodeBtn'), codeStatus: byId('codeStatus'), consent: byId('privacyConsent'), next: byId('newQuestionBtn'),
 };
 let cropper = null;
 let imageUrl = null;
 let installPrompt = null;
+const ACCESS_CODE_STORAGE_KEY = 'yeollinAIT.accessCode';
 const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+function removeSavedAccessCode(message = '') {
+  try { localStorage.removeItem(ACCESS_CODE_STORAGE_KEY); } catch (_) { /* Storage may be blocked. */ }
+  el.rememberCode.checked = false;
+  el.clearCode.hidden = true;
+  el.codeStatus.textContent = message;
+}
+function loadSavedAccessCode() {
+  try {
+    const savedCode = localStorage.getItem(ACCESS_CODE_STORAGE_KEY);
+    if (!savedCode) return;
+    el.code.value = savedCode;
+    el.rememberCode.checked = true;
+    el.clearCode.hidden = false;
+    el.codeStatus.textContent = '이 기기에 저장된 이용 코드를 불러왔습니다.';
+  } catch (_) { /* Continue without persistence when storage is unavailable. */ }
+}
+function saveAccessCode(accessCode) {
+  if (!el.rememberCode.checked) return removeSavedAccessCode();
+  try {
+    localStorage.setItem(ACCESS_CODE_STORAGE_KEY, accessCode);
+    el.clearCode.hidden = false;
+    el.codeStatus.textContent = '이용 코드를 이 기기에 저장했습니다.';
+  } catch (_) {
+    removeSavedAccessCode('브라우저 설정 때문에 코드를 저장하지 못했습니다.');
+  }
+}
+
+loadSavedAccessCode();
+el.rememberCode.addEventListener('change', () => {
+  if (!el.rememberCode.checked) removeSavedAccessCode('저장된 이용 코드를 삭제했습니다.');
+  else el.codeStatus.textContent = '정상 코드로 풀이가 완료되면 이 기기에 저장됩니다.';
+});
+el.clearCode.addEventListener('click', () => {
+  removeSavedAccessCode('저장된 이용 코드를 삭제했습니다.');
+  el.code.value = '';
+  el.code.focus();
+});
 
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault(); installPrompt = event;
@@ -112,6 +152,7 @@ el.crop.addEventListener('click', async () => {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || '잠시 후 다시 시도해 주세요.');
+    saveAccessCode(accessCode);
     render(payload.answer);
   } catch (error) { showError(error.message || '잠시 후 다시 시도해 주세요.'); }
   finally { setBusy(false); }
