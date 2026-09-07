@@ -33,6 +33,22 @@
       </div>
       <p class="code-help">개인 스마트폰에서만 사용하세요. 정상 코드로 풀이가 완료된 뒤 저장됩니다.</p>
       <p id="codeStatus" class="code-status" role="status" aria-live="polite"></p>
+      <label for="studentGrade" class="field-label">학년</label>
+      <select id="studentGrade">
+        <option value="">학년을 선택하세요</option>
+        <optgroup label="초등학교">
+          <option value="초등 1학년">초등 1학년</option><option value="초등 2학년">초등 2학년</option>
+          <option value="초등 3학년">초등 3학년</option><option value="초등 4학년">초등 4학년</option>
+          <option value="초등 5학년">초등 5학년</option><option value="초등 6학년">초등 6학년</option>
+        </optgroup>
+        <optgroup label="중학교">
+          <option value="중등 1학년">중등 1학년</option><option value="중등 2학년">중등 2학년</option><option value="중등 3학년">중등 3학년</option>
+        </optgroup>
+        <optgroup label="고등학교">
+          <option value="고등 1학년">고등 1학년</option><option value="고등 2학년">고등 2학년</option><option value="고등 3학년">고등 3학년</option>
+        </optgroup>
+      </select>
+      <p class="code-help">선택한 학년에 맞춰 설명하며, 이 기기에 학년을 기억합니다.</p>
     </section>
 
     <section class="privacy-notice">
@@ -58,6 +74,17 @@
     <div id="loadingMessage" class="loading" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><span>문제를 읽고 풀이를 준비하고 있어요.</span></div>
     <section id="resultArea" aria-live="polite"></section>
     <button id="newQuestionBtn" class="button secondary-button" type="button" hidden>다른 문제 질문하기</button>
+
+    <section class="learning-hub" aria-labelledby="learning-title">
+      <div class="section-heading"><p class="academy-name">열린 학습코치</p><h2 id="learning-title">공부가 막힐 때 찾아보세요</h2></div>
+      <div class="learning-tabs" role="tablist" aria-label="학습 도움말">
+        <button class="learning-tab active" type="button" role="tab" aria-selected="true" data-topic="study">공부 방법</button>
+        <button class="learning-tab" type="button" role="tab" aria-selected="false" data-topic="exam">시험 대비</button>
+        <button class="learning-tab" type="button" role="tab" aria-selected="false" data-topic="summary">요점정리</button>
+        <button class="learning-tab" type="button" role="tab" aria-selected="false" data-topic="rest">집중·휴식</button>
+      </div>
+      <div id="learningContent" class="learning-content" role="tabpanel"></div>
+    </section>
   </main>
   <footer>열린AIT의 답변은 학습을 돕기 위한 참고 자료입니다.</footer>
   <script src="./config.js"></script>
