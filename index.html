@@ -27,6 +27,12 @@
       <h2 id="access-title">학원 이용 코드</h2>
       <label for="accessCode" class="sr-only">학원 이용 코드</label>
       <input id="accessCode" type="password" autocomplete="off" maxlength="20" placeholder="선생님께 받은 코드 입력">
+      <div class="code-options">
+        <label class="remember-row"><input id="rememberAccessCode" type="checkbox"><span>이 기기에서 이용 코드 기억하기</span></label>
+        <button id="clearAccessCodeBtn" class="text-button" type="button" hidden>저장된 코드 지우기</button>
+      </div>
+      <p class="code-help">개인 스마트폰에서만 사용하세요. 정상 코드로 풀이가 완료된 뒤 저장됩니다.</p>
+      <p id="codeStatus" class="code-status" role="status" aria-live="polite"></p>
     </section>
 
     <section class="privacy-notice">
