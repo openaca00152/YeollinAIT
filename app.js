@@ -5,6 +5,8 @@ const el = {
   loading: byId('loadingMessage'), result: byId('resultArea'), code: byId('accessCode'), rememberCode: byId('rememberAccessCode'),
   clearCode: byId('clearAccessCodeBtn'), codeStatus: byId('codeStatus'), consent: byId('privacyConsent'), next: byId('newQuestionBtn'),
   grade: byId('studentGrade'), learning: byId('learningContent'), learningTabs: [...document.querySelectorAll('.learning-tab')],
+  calmPlayer: byId('calmPlayer'), calmStarts: [...document.querySelectorAll('.calm-start')], stopCalm: byId('stopCalmBtn'),
+  breathingCircle: byId('breathingCircle'), breathingGuide: byId('breathingGuide'), calmTimer: byId('calmTimer'), calmVolume: byId('calmVolume'),
 };
 let cropper = null;
 let imageUrl = null;
@@ -230,6 +232,7 @@ function renderLearning(topic) {
   const list = node('ol', '', 'guide-list');
   items.forEach((item) => list.append(node('li', item)));
   el.learning.append(list);
+  el.calmPlayer.hidden = topic !== 'rest';
 }
 el.learningTabs.forEach((tab) => tab.addEventListener('click', () => {
   el.learningTabs.forEach((item) => { item.classList.toggle('active', item === tab); item.setAttribute('aria-selected', String(item === tab)); });
@@ -238,5 +241,56 @@ el.learningTabs.forEach((tab) => tab.addEventListener('click', () => {
 el.grade.addEventListener('change', () => renderLearning('study'));
 renderLearning('study');
 setTimeout(() => trackUsage('visit'), 0);
+
+let calmSession = null;
+function stopCalm(completed = false) {
+  if (!calmSession) return;
+  const endingSession = calmSession;
+  clearInterval(endingSession.timer);
+  const now = endingSession.context.currentTime;
+  endingSession.master.gain.cancelScheduledValues(now);
+  endingSession.master.gain.setValueAtTime(endingSession.master.gain.value, now);
+  endingSession.master.gain.linearRampToValueAtTime(0, now + 0.35);
+  endingSession.oscillators.forEach((oscillator) => oscillator.stop(now + 0.4));
+  setTimeout(() => endingSession.context.close().catch(() => {}), 500);
+  calmSession = null; el.stopCalm.disabled = true;
+  el.calmStarts.forEach((button) => { button.disabled = false; });
+  el.breathingCircle.className = '';
+  el.breathingGuide.textContent = completed ? '잘했습니다. 천천히 눈을 뜨고 첫 문제를 차분히 읽어보세요.' : '재생을 멈췄습니다.';
+}
+function startCalm(totalSeconds) {
+  stopCalm();
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return alert('현재 기기에서는 마음 안정 소리를 재생할 수 없습니다.');
+  const context = new AudioContext();
+  const master = context.createGain();
+  const oscillators = [174, 261.63].map((frequency, index) => {
+    const oscillator = context.createOscillator(); const gain = context.createGain();
+    oscillator.type = 'sine'; oscillator.frequency.value = frequency; gain.gain.value = index ? 0.28 : 0.45;
+    oscillator.connect(gain).connect(master); oscillator.start(); return oscillator;
+  });
+  master.connect(context.destination); master.gain.value = 0;
+  const targetVolume = Number(el.calmVolume.value) / 100 * 0.09;
+  master.gain.linearRampToValueAtTime(targetVolume, context.currentTime + 1.5);
+  const startedAt = Date.now();
+  const update = () => {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    const remaining = Math.max(0, totalSeconds - elapsed);
+    el.calmTimer.textContent = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+    const cycle = elapsed % 10; const inhale = cycle < 4;
+    el.breathingCircle.className = inhale ? 'inhale' : 'exhale';
+    el.breathingGuide.textContent = inhale ? '코로 천천히 들이마셔요' : '입으로 더 길게 내쉬어요';
+    if (!remaining) stopCalm(true);
+  };
+  calmSession = { context, master, oscillators, timer: setInterval(update, 250) };
+  el.stopCalm.disabled = false; el.calmStarts.forEach((button) => { button.disabled = true; }); update();
+}
+el.calmStarts.forEach((button) => button.addEventListener('click', () => startCalm(Number(button.dataset.calmSeconds))));
+el.stopCalm.addEventListener('click', () => stopCalm());
+el.calmVolume.addEventListener('input', () => {
+  if (!calmSession) return;
+  calmSession.master.gain.setTargetAtTime(Number(el.calmVolume.value) / 100 * 0.09, calmSession.context.currentTime, 0.08);
+});
+window.addEventListener('pagehide', () => stopCalm());
 
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
