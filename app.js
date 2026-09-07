@@ -268,11 +268,13 @@ function stopCalm(completed = false) {
   if (!calmSession) return;
   const endingSession = calmSession;
   clearInterval(endingSession.timer);
+  clearInterval(endingSession.chordTimer);
+  clearInterval(endingSession.chimeTimer);
   const now = endingSession.context.currentTime;
   endingSession.master.gain.cancelScheduledValues(now);
   endingSession.master.gain.setValueAtTime(endingSession.master.gain.value, now);
   endingSession.master.gain.linearRampToValueAtTime(0, now + 0.35);
-  endingSession.oscillators.forEach((oscillator) => oscillator.stop(now + 0.4));
+  endingSession.oscillators.forEach((oscillator) => { try { oscillator.stop(now + 0.4); } catch (_) { /* Already stopped. */ } });
   setTimeout(() => endingSession.context.close().catch(() => {}), 500);
   calmSession = null; el.stopCalm.disabled = true;
   el.calmStarts.forEach((button) => { button.disabled = false; });
@@ -284,20 +286,41 @@ async function startCalm(totalSeconds) {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return alert('현재 기기에서는 마음 안정 소리를 재생할 수 없습니다.');
   const context = new AudioContext();
-  try { await context.resume(); } catch (_) { return alert('휴대폰의 미디어 음량을 확인한 뒤 다시 눌러주세요.'); }
+  try { await context.resume(); } catch (_) { context.close().catch(() => {}); return alert('휴대폰의 미디어 음량을 확인한 뒤 다시 눌러주세요.'); }
   const master = context.createGain();
-  const oscillators = [174, 261.63].map((frequency, index) => {
-    const oscillator = context.createOscillator(); const gain = context.createGain();
-    oscillator.type = 'sine'; oscillator.frequency.value = frequency; gain.gain.value = index ? 0.28 : 0.45;
-    oscillator.connect(gain).connect(master); oscillator.start(); return oscillator;
-  });
+  const filter = context.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1100; filter.Q.value = 0.45;
+  const delay = context.createDelay(1); delay.delayTime.value = 0.38;
+  const feedback = context.createGain(); feedback.gain.value = 0.2;
+  filter.connect(master); filter.connect(delay); delay.connect(feedback).connect(delay); delay.connect(master);
   master.connect(context.destination); master.gain.value = 0;
-  const targetVolume = Number(el.calmVolume.value) / 100 * 0.18;
-  master.gain.linearRampToValueAtTime(targetVolume, context.currentTime + 0.8);
-  const chime = context.createOscillator(); const chimeGain = context.createGain();
-  chime.type = 'sine'; chime.frequency.value = 523.25; chimeGain.gain.setValueAtTime(0.12, context.currentTime);
-  chimeGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 1.2);
-  chime.connect(chimeGain).connect(context.destination); chime.start(); chime.stop(context.currentTime + 1.25);
+  const targetVolume = Number(el.calmVolume.value) / 100 * 0.28;
+  master.gain.linearRampToValueAtTime(targetVolume, context.currentTime + 2.5);
+  const chords = [
+    [130.81, 164.81, 196, 246.94],
+    [110, 130.81, 164.81, 196],
+    [87.31, 110, 130.81, 164.81],
+    [98, 146.83, 196, 220],
+  ];
+  const oscillators = chords[0].map((frequency, index) => {
+    const oscillator = context.createOscillator(); const gain = context.createGain();
+    oscillator.type = index % 2 ? 'triangle' : 'sine'; oscillator.frequency.value = frequency;
+    oscillator.detune.value = index % 2 ? 3 : -3; gain.gain.value = index === 0 ? 0.19 : 0.11;
+    oscillator.connect(gain).connect(filter); oscillator.start(); return oscillator;
+  });
+  let chordIndex = 0;
+  const changeChord = () => {
+    chordIndex = (chordIndex + 1) % chords.length;
+    oscillators.forEach((oscillator, index) => oscillator.frequency.linearRampToValueAtTime(chords[chordIndex][index], context.currentTime + 4));
+  };
+  const playChime = () => {
+    const notes = [523.25, 587.33, 659.25, 783.99];
+    const chime = context.createOscillator(); const chimeGain = context.createGain();
+    chime.type = 'sine'; chime.frequency.value = notes[chordIndex];
+    chimeGain.gain.setValueAtTime(0.045, context.currentTime);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 2.8);
+    chime.connect(chimeGain).connect(delay); chime.start(); chime.stop(context.currentTime + 2.9);
+  };
+  playChime();
   const startedAt = Date.now();
   const update = () => {
     const elapsed = Math.floor((Date.now() - startedAt) / 1000);
@@ -308,14 +331,17 @@ async function startCalm(totalSeconds) {
     el.breathingGuide.textContent = inhale ? '코로 천천히 들이마셔요' : '입으로 더 길게 내쉬어요';
     if (!remaining) stopCalm(true);
   };
-  calmSession = { context, master, oscillators, timer: setInterval(update, 250) };
+  calmSession = {
+    context, master, oscillators,
+    timer: setInterval(update, 250), chordTimer: setInterval(changeChord, 12000), chimeTimer: setInterval(playChime, 16000),
+  };
   el.stopCalm.disabled = false; el.calmStarts.forEach((button) => { button.disabled = true; }); update();
 }
 el.calmStarts.forEach((button) => button.addEventListener('click', () => startCalm(Number(button.dataset.calmSeconds))));
 el.stopCalm.addEventListener('click', () => stopCalm());
 el.calmVolume.addEventListener('input', () => {
   if (!calmSession) return;
-  calmSession.master.gain.setTargetAtTime(Number(el.calmVolume.value) / 100 * 0.18, calmSession.context.currentTime, 0.08);
+  calmSession.master.gain.setTargetAtTime(Number(el.calmVolume.value) / 100 * 0.28, calmSession.context.currentTime, 0.12);
 });
 window.addEventListener('pagehide', () => stopCalm());
 
