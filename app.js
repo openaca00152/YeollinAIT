@@ -134,9 +134,9 @@ async function openLiveCamera() {
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1920 } }, audio: false,
     });
+    el.result.replaceChildren(); el.next.hidden = true; el.upload.hidden = true; el.install.hidden = true; el.cameraPanel.hidden = false;
     el.cameraPreview.srcObject = cameraStream;
     await el.cameraPreview.play();
-    el.result.replaceChildren(); el.next.hidden = true; el.upload.hidden = true; el.install.hidden = true; el.cameraPanel.hidden = false;
   } catch (_) {
     stopCamera(); el.upload.hidden = false; el.camera.click();
   }
