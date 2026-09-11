@@ -1,8 +1,6 @@
 const byId = (id) => document.getElementById(id);
 const el = {
-  install: byId('installAppBtn'), upload: byId('uploadButtonsGroup'), openCamera: byId('openCameraBtn'), camera: byId('cameraInput'), gallery: byId('galleryInput'),
-  cameraPanel: byId('cameraPanel'), cameraViewport: byId('cameraViewport'), cameraPreview: byId('cameraPreview'), cameraGuide: byId('cameraGuide'),
-  closeCamera: byId('closeCameraBtn'), captureProblem: byId('captureProblemBtn'),
+  install: byId('installAppBtn'), upload: byId('uploadButtonsGroup'), camera: byId('cameraInput'), gallery: byId('galleryInput'),
   cropPanel: byId('cropperContainer'), image: byId('imageToCrop'), crop: byId('doCropBtn'), cancel: byId('cancelCropBtn'),
   loading: byId('loadingMessage'), result: byId('resultArea'), code: byId('accessCode'), rememberCode: byId('rememberAccessCode'),
   clearCode: byId('clearAccessCodeBtn'), codeStatus: byId('codeStatus'), consent: byId('privacyConsent'), next: byId('newQuestionBtn'),
@@ -12,7 +10,6 @@ const el = {
 };
 let cropper = null;
 let imageUrl = null;
-let cameraStream = null;
 let installPrompt = null;
 const ACCESS_CODE_STORAGE_KEY = 'yeollinAIT.accessCode';
 const GRADE_STORAGE_KEY = 'yeollinAIT.grade';
@@ -85,15 +82,9 @@ function destroyCropper() {
   if (imageUrl) URL.revokeObjectURL(imageUrl);
   imageUrl = null;
 }
-function stopCamera() {
-  cameraStream?.getTracks().forEach((track) => track.stop());
-  cameraStream = null;
-  el.cameraPreview.srcObject = null;
-  el.cameraPanel.hidden = true;
-}
 function setBusy(value) { el.loading.hidden = !value; el.crop.disabled = value; el.cancel.disabled = value; }
 function reset() {
-  destroyCropper(); stopCamera(); setBusy(false); el.cropPanel.hidden = true; el.upload.hidden = false; el.next.hidden = true;
+  destroyCropper(); setBusy(false); el.cropPanel.hidden = true; el.upload.hidden = false; el.next.hidden = true;
   el.result.replaceChildren(); el.camera.value = ''; el.gallery.value = '';
 }
 function node(tag, text, className) {
@@ -126,24 +117,6 @@ el.camera.addEventListener('change', selectImage);
 el.gallery.addEventListener('change', selectImage);
 el.cancel.addEventListener('click', reset);
 el.next.addEventListener('click', reset);
-
-async function openLiveCamera() {
-  if (!el.consent.checked) return showError('사진 전송 안내를 확인하고 동의해 주세요.');
-  if (!navigator.mediaDevices?.getUserMedia) { el.camera.click(); return; }
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1920 } }, audio: false,
-    });
-    el.result.replaceChildren(); el.next.hidden = true; el.upload.hidden = true; el.install.hidden = true; el.cameraPanel.hidden = false;
-    el.cameraPreview.srcObject = cameraStream;
-    await el.cameraPreview.play();
-  } catch (_) {
-    stopCamera(); el.upload.hidden = false; el.camera.click();
-  }
-}
-el.openCamera.addEventListener('click', openLiveCamera);
-el.closeCamera.addEventListener('click', reset);
-window.addEventListener('pagehide', stopCamera);
 
 function speak(text) {
   if (!window.speechSynthesis) return alert('현재 기기에서는 음성 듣기를 지원하지 않습니다.');
@@ -247,29 +220,6 @@ el.crop.addEventListener('click', async () => {
   if (!cropper) return;
   const canvas = cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048, imageSmoothingQuality: 'high' });
   await analyzeCanvas(canvas);
-});
-
-el.captureProblem.addEventListener('click', async () => {
-  const video = el.cameraPreview;
-  if (!cameraStream || !video.videoWidth || !video.videoHeight) return showError('카메라 화면을 준비하지 못했습니다. 다시 시도해 주세요.');
-  el.captureProblem.disabled = true;
-  const viewport = el.cameraViewport.getBoundingClientRect();
-  const guide = el.cameraGuide.getBoundingClientRect();
-  const coverScale = Math.max(viewport.width / video.videoWidth, viewport.height / video.videoHeight);
-  const displayedWidth = video.videoWidth * coverScale;
-  const displayedHeight = video.videoHeight * coverScale;
-  const hiddenX = (displayedWidth - viewport.width) / 2;
-  const hiddenY = (displayedHeight - viewport.height) / 2;
-  const sourceX = Math.max(0, Math.round((guide.left - viewport.left + hiddenX) / coverScale));
-  const sourceY = Math.max(0, Math.round((guide.top - viewport.top + hiddenY) / coverScale));
-  const sourceWidth = Math.min(video.videoWidth - sourceX, Math.round(guide.width / coverScale));
-  const sourceHeight = Math.min(video.videoHeight - sourceY, Math.round(guide.height / coverScale));
-  const scale = Math.min(1, 2048 / Math.max(sourceWidth, sourceHeight));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(sourceWidth * scale)); canvas.height = Math.max(1, Math.round(sourceHeight * scale));
-  canvas.getContext('2d', { alpha: false }).drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-  stopCamera();
-  try { await analyzeCanvas(canvas); } finally { el.captureProblem.disabled = false; }
 });
 
 const learningGuides = {
