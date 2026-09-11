@@ -98,6 +98,15 @@ function showError(message) {
   box.append(node('h2', '분석하지 못했어요'), node('p', message));
   el.result.append(box); el.next.hidden = false;
 }
+function koreanErrorMessage(error) {
+  const message = String(error?.message || '').trim();
+  if (/[가-힣]/.test(message)) return message;
+  if (/network|failed to fetch|load failed|internet|offline/i.test(message)) return '인터넷 연결이 원활하지 않습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요.';
+  if (/security|permission|notallowed|denied/i.test(message)) return '사진 또는 카메라 사용 권한이 필요합니다. 휴대폰 설정에서 권한을 허용해 주세요.';
+  if (/quota|rate|too many|429/i.test(message)) return '현재 이용자가 많아 잠시 기다려야 합니다. 1분 뒤 다시 시도해 주세요.';
+  if (/size|large|payload|413/i.test(message)) return '사진 용량이 너무 큽니다. 문제 부분을 조금 더 작게 잘라 다시 시도해 주세요.';
+  return '문제를 처리하는 중 오류가 발생했습니다. 사진을 다시 선택하거나 잠시 후 다시 시도해 주세요.';
+}
 function validate(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return 'JPG, PNG, WEBP 사진만 사용할 수 있어요.';
   if (file.size > 10 * 1024 * 1024) return '사진 크기는 10MB 이하로 선택해 주세요.';
@@ -213,7 +222,7 @@ async function analyzeCanvas(canvas) {
     if (!response.ok) throw new Error(payload.error || '잠시 후 다시 시도해 주세요.');
     saveAccessCode(accessCode);
     render(payload.answer);
-  } catch (error) { showError(error.message || '잠시 후 다시 시도해 주세요.'); }
+  } catch (error) { showError(koreanErrorMessage(error)); }
   finally { setBusy(false); }
 }
 el.crop.addEventListener('click', async () => {
