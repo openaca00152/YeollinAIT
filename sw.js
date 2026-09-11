@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yeollin-ait-v8';
+const CACHE_NAME = 'yeollin-ait-v9';
 const APP_SHELL = ['./', './index.html', './admin.html', './config.js', './app.js', './styles.css', './manifest.json', './icon.png'];
 
 self.addEventListener('install', (event) => {

@@ -1,6 +1,8 @@
 const byId = (id) => document.getElementById(id);
 const el = {
-  install: byId('installAppBtn'), upload: byId('uploadButtonsGroup'), camera: byId('cameraInput'), gallery: byId('galleryInput'),
+  install: byId('installAppBtn'), upload: byId('uploadButtonsGroup'), openCamera: byId('openCameraBtn'), camera: byId('cameraInput'), gallery: byId('galleryInput'),
+  cameraPanel: byId('cameraPanel'), cameraViewport: byId('cameraViewport'), cameraPreview: byId('cameraPreview'), cameraGuide: byId('cameraGuide'),
+  closeCamera: byId('closeCameraBtn'), captureProblem: byId('captureProblemBtn'),
   cropPanel: byId('cropperContainer'), image: byId('imageToCrop'), crop: byId('doCropBtn'), cancel: byId('cancelCropBtn'),
   loading: byId('loadingMessage'), result: byId('resultArea'), code: byId('accessCode'), rememberCode: byId('rememberAccessCode'),
   clearCode: byId('clearAccessCodeBtn'), codeStatus: byId('codeStatus'), consent: byId('privacyConsent'), next: byId('newQuestionBtn'),
@@ -10,6 +12,7 @@ const el = {
 };
 let cropper = null;
 let imageUrl = null;
+let cameraStream = null;
 let installPrompt = null;
 const ACCESS_CODE_STORAGE_KEY = 'yeollinAIT.accessCode';
 const GRADE_STORAGE_KEY = 'yeollinAIT.grade';
@@ -82,9 +85,15 @@ function destroyCropper() {
   if (imageUrl) URL.revokeObjectURL(imageUrl);
   imageUrl = null;
 }
+function stopCamera() {
+  cameraStream?.getTracks().forEach((track) => track.stop());
+  cameraStream = null;
+  el.cameraPreview.srcObject = null;
+  el.cameraPanel.hidden = true;
+}
 function setBusy(value) { el.loading.hidden = !value; el.crop.disabled = value; el.cancel.disabled = value; }
 function reset() {
-  destroyCropper(); setBusy(false); el.cropPanel.hidden = true; el.upload.hidden = false; el.next.hidden = true;
+  destroyCropper(); stopCamera(); setBusy(false); el.cropPanel.hidden = true; el.upload.hidden = false; el.next.hidden = true;
   el.result.replaceChildren(); el.camera.value = ''; el.gallery.value = '';
 }
 function node(tag, text, className) {
@@ -118,6 +127,24 @@ el.gallery.addEventListener('change', selectImage);
 el.cancel.addEventListener('click', reset);
 el.next.addEventListener('click', reset);
 
+async function openLiveCamera() {
+  if (!el.consent.checked) return showError('사진 전송 안내를 확인하고 동의해 주세요.');
+  if (!navigator.mediaDevices?.getUserMedia) { el.camera.click(); return; }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1920 } }, audio: false,
+    });
+    el.cameraPreview.srcObject = cameraStream;
+    await el.cameraPreview.play();
+    el.result.replaceChildren(); el.next.hidden = true; el.upload.hidden = true; el.install.hidden = true; el.cameraPanel.hidden = false;
+  } catch (_) {
+    stopCamera(); el.upload.hidden = false; el.camera.click();
+  }
+}
+el.openCamera.addEventListener('click', openLiveCamera);
+el.closeCamera.addEventListener('click', reset);
+window.addEventListener('pagehide', stopCamera);
+
 function speak(text) {
   if (!window.speechSynthesis) return alert('현재 기기에서는 음성 듣기를 지원하지 않습니다.');
   window.speechSynthesis.cancel();
@@ -147,6 +174,18 @@ function render(answer) {
   const box = node('article', '', 'answer-box');
   const subjectNames = { math: '수학', english: '영어', korean: '국어', social: '사회', history: '역사', science: '과학' };
   box.append(node('p', `${subjectNames[answer.subject] || '교과'} 문제`, 'answer-label'), node('h2', answer.title || '풀이 결과'));
+  if (Array.isArray(answer.recognizedConditions) && answer.recognizedConditions.length) {
+    const recognized = node('section', '', 'recognized-box');
+    recognized.append(node('strong', 'AI가 사진에서 읽은 조건'));
+    const recognizedList = node('ul');
+    answer.recognizedConditions.forEach((condition) => recognizedList.append(node('li', condition)));
+    recognized.append(recognizedList); box.append(recognized);
+  }
+  if (answer.needsRetake) {
+    const retake = node('section', '', 'retake-box');
+    retake.append(node('strong', '사진을 한 번 더 찍어 주세요'), node('p', answer.summary || '꼭짓점 글자나 선·각도 표시가 흐리거나 잘렸습니다. 문제 전체가 안내선 안에 오도록 다시 촬영해 주세요.'));
+    box.append(retake); el.result.append(box); el.next.hidden = false; return;
+  }
   const hintBox = node('section', '', 'hint-box');
   hintBox.append(node('strong', '먼저 생각해 볼 힌트'), node('p', answer.hint || answer.checkTip || '문제에서 주어진 조건을 다시 확인해 보세요.'));
   const reveal = node('button', '전체 풀이와 정답 보기', 'button reveal-button'); reveal.type = 'button';
@@ -176,8 +215,13 @@ function render(answer) {
   window.MathJax?.typesetPromise?.([hintBox]).catch(() => {});
 }
 
-el.crop.addEventListener('click', async () => {
-  if (!cropper) return;
+function encodedImage(canvas) {
+  let dataUrl = canvas.toDataURL('image/png');
+  if (dataUrl.length > 6_000_000) dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  const [header, image] = dataUrl.split(',');
+  return { image, mimeType: header.includes('image/png') ? 'image/png' : 'image/jpeg' };
+}
+async function analyzeCanvas(canvas) {
   const accessCode = el.code.value.trim();
   if (!accessCode) return showError('학원 이용 코드를 입력해 주세요.');
   if (!el.grade.value) return showError('학년을 먼저 선택해 주세요.');
@@ -185,13 +229,12 @@ el.crop.addEventListener('click', async () => {
   try {
     const apiUrl = String(window.YEOLLIN_API_URL || '').trim();
     if (!apiUrl.startsWith('https://')) throw new Error('보안 서버 연결 설정이 아직 완료되지 않았습니다.');
-    const canvas = cropper.getCroppedCanvas({ maxWidth: 1280, maxHeight: 1280, imageSmoothingQuality: 'high' });
     if (!canvas) throw new Error('사진을 처리하지 못했습니다.');
-    const image = canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+    const { image, mimeType } = encodedImage(canvas);
     destroyCropper(); el.cropPanel.hidden = true;
     const response = await fetch(apiUrl, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Academy-Code': accessCode },
-      body: JSON.stringify({ image, mimeType: 'image/jpeg', grade: el.grade.value, deviceId: deviceId() }),
+      body: JSON.stringify({ image, mimeType, grade: el.grade.value, deviceId: deviceId() }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || '잠시 후 다시 시도해 주세요.');
@@ -199,6 +242,34 @@ el.crop.addEventListener('click', async () => {
     render(payload.answer);
   } catch (error) { showError(error.message || '잠시 후 다시 시도해 주세요.'); }
   finally { setBusy(false); }
+}
+el.crop.addEventListener('click', async () => {
+  if (!cropper) return;
+  const canvas = cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048, imageSmoothingQuality: 'high' });
+  await analyzeCanvas(canvas);
+});
+
+el.captureProblem.addEventListener('click', async () => {
+  const video = el.cameraPreview;
+  if (!cameraStream || !video.videoWidth || !video.videoHeight) return showError('카메라 화면을 준비하지 못했습니다. 다시 시도해 주세요.');
+  el.captureProblem.disabled = true;
+  const viewport = el.cameraViewport.getBoundingClientRect();
+  const guide = el.cameraGuide.getBoundingClientRect();
+  const coverScale = Math.max(viewport.width / video.videoWidth, viewport.height / video.videoHeight);
+  const displayedWidth = video.videoWidth * coverScale;
+  const displayedHeight = video.videoHeight * coverScale;
+  const hiddenX = (displayedWidth - viewport.width) / 2;
+  const hiddenY = (displayedHeight - viewport.height) / 2;
+  const sourceX = Math.max(0, Math.round((guide.left - viewport.left + hiddenX) / coverScale));
+  const sourceY = Math.max(0, Math.round((guide.top - viewport.top + hiddenY) / coverScale));
+  const sourceWidth = Math.min(video.videoWidth - sourceX, Math.round(guide.width / coverScale));
+  const sourceHeight = Math.min(video.videoHeight - sourceY, Math.round(guide.height / coverScale));
+  const scale = Math.min(1, 2048 / Math.max(sourceWidth, sourceHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(sourceWidth * scale)); canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+  canvas.getContext('2d', { alpha: false }).drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+  stopCamera();
+  try { await analyzeCanvas(canvas); } finally { el.captureProblem.disabled = false; }
 });
 
 const learningGuides = {
