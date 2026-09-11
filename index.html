@@ -58,22 +58,9 @@
     </section>
 
     <div id="uploadButtonsGroup" class="upload-actions">
-      <button id="openCameraBtn" class="button primary-button" type="button">📷 카메라로 문제 맞춰 찍기</button>
-      <input class="sr-only" type="file" id="cameraInput" accept="image/jpeg,image/png,image/webp" capture="environment">
+      <label class="button primary-button"><span>📷 문제 촬영하기</span><input type="file" id="cameraInput" accept="image/jpeg,image/png,image/webp" capture="environment"></label>
       <label class="button secondary-button"><span>사진에서 고르기</span><input type="file" id="galleryInput" accept="image/jpeg,image/png,image/webp"></label>
     </div>
-
-    <section id="cameraPanel" class="camera-panel" aria-label="문제 촬영 화면" hidden>
-      <p class="camera-help">문제 전체와 꼭짓점·각도 표시가 네모 안에 선명하게 보이도록 맞춰 주세요.</p>
-      <div id="cameraViewport" class="camera-viewport">
-        <video id="cameraPreview" autoplay playsinline muted></video>
-        <div id="cameraGuide" class="camera-guide" aria-hidden="true"></div>
-      </div>
-      <div class="row-actions">
-        <button class="button ghost-button" id="closeCameraBtn" type="button">취소</button>
-        <button class="button primary-button" id="captureProblemBtn" type="button">이 영역 촬영·풀이</button>
-      </div>
-    </section>
 
     <section id="cropperContainer" class="crop-panel" aria-label="문제 부분 자르기" hidden>
       <p class="crop-help">문제 부분만 네모 안에 맞춰 주세요.</p>
